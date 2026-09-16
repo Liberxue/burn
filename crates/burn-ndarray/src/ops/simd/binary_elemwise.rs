@@ -125,11 +125,14 @@ impl<T: VOrd + MinMax> ScalarSimdBinop<T, T> for VecMin {
     }
 
     fn apply_vec<S: Simd>(lhs: Vector<S, T>, rhs: Self::RhsVec<S>) -> Vector<S, T> {
-        lhs.min(rhs)
+        // The bound goes first: the hardware min returns its second operand when either
+        // is NaN, so this keeps a NaN element instead of replacing it with the bound.
+        // Swapping is free, where dropping floats to a comparison loop costs 2-3x.
+        rhs.min(lhs)
     }
 
     fn apply(lhs: T, rhs: T) -> T {
-        lhs.min(rhs)
+        lhs.min_nan(rhs)
     }
 
     fn is_accelerated<S: Simd>() -> bool {
@@ -146,11 +149,12 @@ impl<T: VOrd + MinMax> ScalarSimdBinop<T, T> for VecMax {
     }
 
     fn apply_vec<S: Simd>(lhs: Vector<S, T>, rhs: Self::RhsVec<S>) -> Vector<S, T> {
-        lhs.max(rhs)
+        // See VecMin above for why the bound is the first operand.
+        rhs.max(lhs)
     }
 
     fn apply(lhs: T, rhs: T) -> T {
-        lhs.max(rhs)
+        lhs.max_nan(rhs)
     }
 
     fn is_accelerated<S: Simd>() -> bool {
@@ -167,11 +171,12 @@ impl<T: VOrd + MinMax> ScalarSimdBinop<T, T> for VecClamp {
     }
 
     fn apply_vec<S: Simd>(lhs: Vector<S, T>, (min, max): Self::RhsVec<S>) -> Vector<S, T> {
-        lhs.min(max).max(min)
+        // See VecMin above for why the bounds are the first operands.
+        min.max(max.min(lhs))
     }
 
     fn apply(lhs: T, (min, max): Self::Rhs) -> T {
-        lhs.min(max).max(min)
+        lhs.min_nan(max).max_nan(min)
     }
 
     fn is_accelerated<S: Simd>() -> bool {

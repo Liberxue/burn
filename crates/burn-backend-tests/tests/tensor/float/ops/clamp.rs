@@ -103,6 +103,27 @@ fn clamp_max_nan_propagation() {
     assert_eq!(values[1..], [-1.0, 1.0]);
 }
 
+// Long enough to take the vectorized path, where a hardware min/max would return the bound.
+#[test]
+fn clamp_nan_propagation_vectorized() {
+    let nan_at = |op: fn(TestTensor<1>) -> TestTensor<1>| {
+        let mut values = vec![2.0f32; 1024];
+        values[0] = f32::NAN;
+        values[512] = f32::NAN;
+
+        let tensor =
+            TestTensor::<1>::from_data(TensorData::new(values, [1024]), &Default::default());
+        let output = op(tensor).into_data().convert::<f32>();
+        let output = output.as_slice::<f32>().unwrap();
+
+        (output[0].is_nan(), output[512].is_nan(), output[1])
+    };
+
+    assert_eq!(nan_at(|t| t.clamp_min(0.0)), (true, true, 2.0));
+    assert_eq!(nan_at(|t| t.clamp_max(1.0)), (true, true, 1.0));
+    assert_eq!(nan_at(|t| t.clamp(0.0, 1.0)), (true, true, 1.0));
+}
+
 // A NaN bound makes every element NaN, not just one: x > NaN and x < NaN are both false, so
 // each element falls through to the bound. Flex only, ndarray returns the input unchanged.
 #[cfg(feature = "flex")]

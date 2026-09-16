@@ -36,6 +36,22 @@ fn test_relu_nan_propagation() {
     assert_eq!(values[1..], [0.0, 0.0, 2.0]);
 }
 
+// Long enough to take the vectorized path, where a hardware max would drop the NaN.
+#[test]
+fn test_relu_nan_propagation_vectorized() {
+    let mut values = vec![2.0f32; 1024];
+    values[0] = f32::NAN;
+    values[512] = f32::NAN;
+
+    let tensor = TestTensor::<1>::from_data(TensorData::new(values, [1024]), &Default::default());
+    let output = activation::relu(tensor).into_data().convert::<f32>();
+    let output = output.as_slice::<f32>().unwrap();
+
+    assert!(output[0].is_nan());
+    assert!(output[512].is_nan());
+    assert_eq!(output[1], 2.0);
+}
+
 #[cfg(any(feature = "flex", feature = "ndarray"))]
 #[test]
 fn test_relu_nan_propagation_f64() {

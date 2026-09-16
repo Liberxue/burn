@@ -74,6 +74,10 @@ pub(crate) fn uninit_array_like<In, Out>(reference: &ArcArray<In, IxDyn>) -> Arr
 pub trait MinMax {
     fn min(self, other: Self) -> Self;
     fn max(self, other: Self) -> Self;
+    /// Like `min`, but a NaN operand wins rather than being ignored.
+    fn min_nan(self, other: Self) -> Self;
+    /// Like `max`, but a NaN operand wins rather than being ignored.
+    fn max_nan(self, other: Self) -> Self;
 }
 
 macro_rules! impl_minmax {
@@ -83,6 +87,12 @@ macro_rules! impl_minmax {
                 Ord::min(self, other)
             }
             fn max(self, other: Self) -> Self {
+                Ord::max(self, other)
+            }
+            fn min_nan(self, other: Self) -> Self {
+                Ord::min(self, other)
+            }
+            fn max_nan(self, other: Self) -> Self {
                 Ord::max(self, other)
             }
         }
@@ -102,6 +112,22 @@ impl MinMax for f32 {
     fn max(self, other: Self) -> Self {
         self.max(other)
     }
+
+    fn min_nan(self, other: Self) -> Self {
+        if self.is_nan() || self < other {
+            self
+        } else {
+            other
+        }
+    }
+
+    fn max_nan(self, other: Self) -> Self {
+        if self.is_nan() || self > other {
+            self
+        } else {
+            other
+        }
+    }
 }
 
 impl MinMax for f64 {
@@ -111,5 +137,21 @@ impl MinMax for f64 {
 
     fn max(self, other: Self) -> Self {
         self.max(other)
+    }
+
+    fn min_nan(self, other: Self) -> Self {
+        if self.is_nan() || self < other {
+            self
+        } else {
+            other
+        }
+    }
+
+    fn max_nan(self, other: Self) -> Self {
+        if self.is_nan() || self > other {
+            self
+        } else {
+            other
+        }
     }
 }
